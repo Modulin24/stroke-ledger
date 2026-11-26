@@ -23,6 +23,10 @@ async function start(opt = {}) {
     if (!u.startsWith('/stroke-ledger/')) { s.writeHead(404); return s.end(); }
     u = u.slice('/stroke-ledger/'.length) || 'index.html';
     if (u === 'config.js') { s.writeHead(200, { 'content-type': TYPES['.js'] }); return s.end(`window.STROKE_LEDGER = { esriKey: ${JSON.stringify(state.key)} };`); }
+    if (u === 'geo.js' && !opt.pins) {          // most tests start from unmapped courses: keep the club locations, drop the built-in pins
+      const g = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'geo.json'), 'utf8')); Object.values(g.courses).forEach(c => { c.holes = []; });
+      s.writeHead(200, { 'content-type': TYPES['.js'] }); return s.end('window.SL_GEO = ' + JSON.stringify(g) + ';');
+    }
     const f = path.join(ROOT, u);
     if (!f.startsWith(ROOT) || u.startsWith('.git')) { s.writeHead(403); return s.end(); }
     fs.readFile(f, (e, d) => { if (e) { s.writeHead(404); s.end(); } else { s.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); s.end(d); } });

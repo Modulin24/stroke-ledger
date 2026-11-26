@@ -1141,7 +1141,7 @@ function playModel(r, hi) {
   h.shots.forEach((s, i) => { if (i) add(s.g, s.lie, i); });
   if (h.done) { pts.push(pin); lab.push(0); } else if (h.shots.length && h.next) add(h.next.g, h.next.lie, h.shots.length);
   const dots = pts.map((q, k) => q && lab[k] > 0 ? [q, lab[k]] : null).filter(Boolean);
-  return { key:`play:${r.id}:${hi}:${h.shots.length}:${h.done ? 1 : 0}`, mode:'play', fit: h.shots.length && !h.done ? 'shot' : 'hole', tee, green:geo.g, flag:pin, flagDrag:!h.done, path:pts, dots,
+  return { key:`play:${r.id}:${hi}:${h.shots.length}:${h.done ? 1 : 0}`, mode:'play', fit: h.shots.length && !h.done ? 'shot' : 'hole', tee, teeDrag:!h.done, green:geo.g, flag:pin, flagDrag:!h.done, path:pts, dots,
     ball: !h.done && p && good(p.g), from: h.done ? null : spotOf(h, geo), aim: a ? { from:a.from, pt:a.pt, sx:a.sx, sy:a.sy } : null, planAim: !h.shots.length && x.plan ? good(x.plan.ag) : null, center: tee || pin };
 }
 function mapPanel(r, hi) {
@@ -1175,14 +1175,30 @@ function setBall(ll) {
   else { if (p.lie === 'grn') p.lie = 'fwy'; p.d = String(Math.max(1, Math.round(d))); p.gft = 0; }
   render();
 }
+/** Today's tee for this hole, in this round only: where the drive is measured from. On a par 3 it also sets what the hole plays. */
+function setTee(r, h, geo, ll) {
+  h.tg = ll;
+  const a = S.ui.aim; if (a && a.on && a.src === 'spot' && !h.shots.length) { a.from = ll; a.pt = null; }
+  if (h.shots.length) return 'Tee moved for this round.';
+  if (h.par === 3) { const y = yds(SLMap.dist(ll, pinOf(h, geo))); padFor(r, S.ui.hole).d0 = y; return `Tee moved for this round. The hole now plays ${y} yards.`; }
+  return 'Tee moved for this round. If the hole plays longer or shorter today, change Hole plays below.';
+}
 const PLAY_H = {
+  teeMove: ll => {
+    const r = curRound(), h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo || h.done) { render(); return; }
+    const d = SLMap.dist(ll, SLMap.centroid(geo.g));
+    if (d < 40 || d > 800) { render(); say('The tee has to stay on this hole, off the green.'); return; }
+    const note = setTee(r, h, geo, ll); touchRound(S.ui.roundId); render(); say(note);
+  },
   tap: ll => { const r = curRound(), h = curHole(); if (!r || !h || h.done) return; const a = S.ui.aim; if (a && a.on && a.key === `${r.id}:${S.ui.hole}:${h.shots.length}`) { a.pt = ll; render(); } else setBall(ll); },
   ballMove: ll => setBall(ll),
   aimMove: ll => { if (S.ui.aim) { S.ui.aim.pt = ll; render(); } },
   flagMove: ll => {
     const h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo) return;
     if (SLMap.dist(ll, SLMap.centroid(geo.g)) > 45) { render(); say('The flag has to stay on the green.'); return; }
-    h.pin = ll; touchRound(S.ui.roundId);
+    h.pin = ll;
+    if (!h.shots.length && h.par === 3 && h.tg) padFor(curRound(), S.ui.hole).d0 = yds(SLMap.dist(h.tg, ll));          // a par 3 with today's tee marked plays tee to flag
+    touchRound(S.ui.roundId);
     const p = S.ui.pad; if (p && p.g) setBall(p.g); else render();
   },
   note: t => say(t)
@@ -1257,8 +1273,8 @@ function hitText(h, i) {
 }
 function markRow(h, p, n) {
   if (!geoOf(holeDef(h))) return '';
-  return `<div class="markrow"><button class="btn flag" type="button" data-act="markBall">Mark ball here</button>${n ? '' : `<button class="btn ghost sm" type="button" data-act="markTee" aria-pressed="${!!h.tg}">${h.tg ? 'Tee marked ✓' : 'Mark the tee here'}</button>`}${p.g ? `<button class="btn ghost sm" type="button" data-act="clearBall">Remove pin</button>` : ''}</div>
-    <p class="sub" id="markMsg">${p.g ? (p.lie === 'grn' ? `Pin dropped on the green${p.gft ? `, about ${p.gft} feet from the flag by GPS. Pace it off and type the feet below` : ''}.` : `Pin dropped ${esc(p.d)} yards from the flag. Drag it to adjust, then pick the club and the lie.`) : 'At the ball, tap Mark ball here. Away from the course, tap the photo where the ball finished.'}</p>`;
+  return `<div class="markrow"><button class="btn flag" type="button" data-act="markBall">Mark ball here</button>${n ? '' : `<button class="btn ghost sm" type="button" data-act="markTee">Mark the tee here</button>${h.tg ? `<button class="btn ghost sm" type="button" data-act="resetTee">Reset the tee</button>` : ''}`}${p.g ? `<button class="btn ghost sm" type="button" data-act="clearBall">Remove pin</button>` : ''}</div>
+    <p class="sub" id="markMsg">${p.g ? (p.lie === 'grn' ? `Pin dropped on the green${p.gft ? `, about ${p.gft} feet from the flag by GPS. Pace it off and type the feet below` : ''}.` : `Pin dropped ${esc(p.d)} yards from the flag. Drag it to adjust, then pick the club and the lie.`) : 'At the ball, tap Mark ball here. Away from the course, tap the photo where the ball finished.'}</p>${n ? '' : `<p class="sub">Tees moved today? Drag the T on the photo, or stand on the tee box and tap Mark the tee here.</p>`}`;
 }
 function courseMapRow(c) {
   if (!MAPS) return '';
@@ -1279,7 +1295,7 @@ function mapGuide() {
   if (!MAPS) return '';
   return `<section class="card"><h2 class="h2">The map</h2>
     <ol class="how"><li><b>Map a hole once.</b> In Courses, open a course and tap Map the holes. Tap the tee box, then tap 6 to 10 points around the edge of the green. Two minutes a hole.</li>
-    <li><b>Read your distance.</b> In a round, the photo shows front, centre and back of the green from where you stand. Drag the flag to today's pin and a fourth number appears.</li>
+    <li><b>Read your distance.</b> In a round, the photo shows front, centre and back of the green from where you stand. Drag the flag to today's pin and a fourth number appears. If the tees have moved, drag the T as well. Both changes last for that round only.</li>
     <li><b>Pick an aim.</b> Tap Aim to draw your shot pattern for the club. Drag the cross until the rings sit clear of trouble. Inside reach of the green, the app starts you on the spot with the lowest expected score.</li>
     <li><b>Mark each shot.</b> Walk to the ball and tap Mark ball here. The distance left fills in by itself. Pick the club and the lie, then Save shot. On the green, type the feet.</li>
     <li><b>Entering a round afterwards?</b> Tap the photo where each shot finished instead.</li></ol>
@@ -1540,15 +1556,19 @@ Object.assign(ACT, {
   clearBall: () => { const p = S.ui.pad; if (!p) return; delete p.g; p.gft = 0; p.d = ''; render(); },
   markTee: async () => {
     const h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo || h.shots.length) return;
-    if (h.tg) { delete h.tg; touchRound(S.ui.roundId); render(); return; }
     if (!SLMap.gps.want) { SLMap.gpsSet(true); liveMap(); }
     say('Getting your position…');
     const fx = await SLMap.locate(8000);
     if (curHole() !== h) return;
     if (!fx) { say(SLMap.gps.err || 'No GPS position yet. Try again in a moment.'); return; }
     if (SLMap.dist(fx.ll, SLMap.centroid(geo.g)) > 900) { say('GPS puts you too far from this hole to be on its tee.'); return; }
-    h.tg = fx.ll;
-    if (h.par === 3) padFor(curRound(), S.ui.hole).d0 = yds(SLMap.dist(fx.ll, pinOf(h, geo)));          // a par 3 plays what the GPS measures
+    const note = setTee(curRound(), h, geo, fx.ll); touchRound(S.ui.roundId); render(); say(note);
+  },
+  resetTee: () => {
+    const r = curRound(), h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo || !h.tg) return;
+    delete h.tg;
+    const a = S.ui.aim; if (a && a.on && a.src === 'spot' && !h.shots.length) { a.from = teeOf(h, geo); a.pt = null; }
+    if (!h.shots.length && h.par === 3) padFor(r, S.ui.hole).d0 = String(startPos(h).d || '');
     touchRound(S.ui.roundId); render();
   },
   aimToggle: () => {
@@ -1557,7 +1577,7 @@ Object.assign(ACT, {
     if (a && a.on && a.key === key) { S.ui.aim = null; render(); return; }
     const fx = SLMap.fresh(), near = fx && SLMap.dist(fx.ll, SLMap.centroid(geo.g)) < 900, from = near ? fx.ll : spotOf(h, geo);
     if (!from) { say('The map does not know where the ball is. Turn on GPS, or mark the last shot on the photo first.'); return; }
-    S.ui.aim = { on:true, key, from, club:'', pt:null }; render(); SLMap.view('shot');
+    S.ui.aim = { on:true, key, from, src: near ? 'gps' : 'spot', club:'', pt:null }; render(); SLMap.view('shot');
   },
   aimBest: () => { if (S.ui.aim) { S.ui.aim.pt = null; render(); } },
   aimSave: el => {

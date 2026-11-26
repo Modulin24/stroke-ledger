@@ -110,7 +110,7 @@ const near = (a, b, tol) => Math.abs(a - b) <= tol;
   // mark the tee, then hole 2 has no map
   await t.geo(TEE, 4); await p.waitForTimeout(400);
   await p.click('button[data-act=markTee]');
-  await p.waitForFunction(() => /Tee marked/.test(document.querySelector('button[data-act=markTee]').textContent), null, { timeout: 12000 });
+  await p.waitForSelector('button[data-act=resetTee]', { timeout: 12000 });
   d = await t.data(); h = Object.values(d.rounds).find(r => !r.example).holes[0];
   t.ok(h.tg && near(h.tg[0], TEE[0], 1e-5), 'tee position recorded for the round', h.tg);
   await p.click('button[data-act=hole][data-i="1"]');

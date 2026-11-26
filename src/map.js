@@ -233,7 +233,7 @@ const SLMap = (() => {
     const D = many('dot', dots.length, () => { const k = new maplibregl.Marker({ element: el('mk-dot', '') }); k._on = false; return k; });
     dots.forEach(([p, label], j) => { D[j].getElement().textContent = String(label); place(D[j], p); });
     const tee = marker('tee', 'mk-tee', ICON.tee, { draggable: true });
-    tee.setDraggable(ed); place(tee, m.tee);
+    tee.setDraggable(ed || !!m.teeDrag); place(tee, m.tee);
     if (!tee._w) { tee._w = 1; tee.on('dragend', () => H.teeMove && H.teeMove(at(tee))); }
     const flag = marker('flag', 'mk-flag', ICON.flag, { draggable: true, anchor: 'bottom', offset: [8, 2] });
     flag.setDraggable(!!m.flagDrag); place(flag, ed ? null : m.flag);
@@ -311,6 +311,12 @@ const SLMap = (() => {
     map.on('moveend', () => { const k = map.getCenter(); lastCenter = r6([k.lat, k.lng]); try { localStorage.setItem(LK, JSON.stringify(lastCenter)); } catch (e) { /* ignore */ } });
     map.on('error', () => { /* a tile that fails to load is not worth stopping for */ });
   }
+  // With a mouse, letting go of a pin outside the photo would leave it stuck to the pointer: the map never hears the release.
+  // End the drag where the pin last was. (A finger does not have this problem: its release always reaches the pin.)
+  document.addEventListener('mouseup', e => {
+    if (!map || map.getCanvasContainer().contains(e.target)) return;
+    Object.values(mk).concat(lists.dot, lists.vert).forEach(k => { if (k._state && k._state !== 'inactive' && typeof k._onUp === 'function') k._onUp(); });
+  }, true);
   /** Put the map in a slot of the page and draw the model. Called after every render; the map itself is built once and moved. */
   function show(slot, m, handlers) {
     model = m; H = handlers || {};

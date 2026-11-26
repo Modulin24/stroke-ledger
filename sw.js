@@ -1,5 +1,5 @@
 /* Stroke Ledger: keeps the app's own files on the device so it opens without a signal. Built by src/build.py. */
-const V = 'stroke-ledger-16941ffa4748';
+const V = 'stroke-ledger-51a4b1eeddc9';
 const SHELL = ["./", "index.html", "config.js", "geo.js", "manifest.webmanifest", "scorecard-template.xlsx", "vendor/maplibre-gl.js", "vendor/maplibre-gl.css", "icons/icon-64.png", "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png", "fonts/barlow-latin-400-normal.woff2", "fonts/barlow-latin-500-normal.woff2", "fonts/barlow-latin-600-normal.woff2", "fonts/barlow-condensed-latin-500-normal.woff2", "fonts/barlow-condensed-latin-600-normal.woff2", "fonts/barlow-condensed-latin-700-normal.woff2"];
 const FRESH = /\/(index\.html|config\.js|geo\.js)?$/;          // always ask the network first for these, so updates arrive
 self.addEventListener('install', e => e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));

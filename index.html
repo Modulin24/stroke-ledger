@@ -1231,7 +1231,8 @@ function vRounds() { const r = S.ui.roundId && S.rounds[S.ui.roundId]; return r 
 function vRoundList() {
   const cs = S.courses.list, rs = allRounds().reverse(), nr = S.ui.nr;
   let h = '';
-  if (IOS && !STANDALONE && !hintSeen()) h += `<div class="note maphint"><span><b>Put this app on your Home Screen.</b> In Safari, tap the Share button, then Add to Home Screen. Do it before you enter rounds: the Home Screen app keeps its own data.</span><button type="button" class="btn ghost sm" data-act="hintOff">Got it</button></div>`;
+  if (IOS && !STANDALONE && !hintSeen()) h += `<div class="note maphint"><span><b>Put this app on your Home Screen.</b> In Safari, tap the Share button, then Add to Home Screen. Do it before you set up your bag or enter rounds: the Home Screen app keeps its own data.</span><button type="button" class="btn ghost sm" data-act="hintOff">Got it</button></div>`;
+  else h += bagNudge();
   h += backupNag();
   if (!cs.length) {
     h += `<section class="card"><h2 class="h2">New round</h2><p class="empty">${S.sync.state === 'loading' || S.sync.state === 'starting' ? 'Loading your courses.' : 'Add a course first. Each course needs a par and a yardage for every hole.'}</p><div class="btnrow"><button class="btn" data-act="go" data-view="courses">Go to Courses</button></div></section>`;
@@ -2101,7 +2102,8 @@ function vGuide() {
     ['Benchmark', 'Header', 'Every strokes-gained number. Scores, greens, fairways and putts do not change.'],
     ['Around the green starts inside', 'Setup', 'Which shots count as Approach and which as Around green.'],
     ['Tiger 5 scoring-club distance', 'Setup', 'Which bogeys count as a mistake with a scoring club in hand.'],
-    ['Bag distances and ± pattern', 'Setup', 'The Aim planner only. Stats do not use them.'],
+    ['Bag distances and ± pattern', 'Setup', 'The club the shot pad suggests (carry) and the Aim tools (carry, total and ±). Strokes gained and the stats do not use them. Saved on this device until you change them.'],
+    ['What counts as a putt', 'Shot pad', 'Only a stroke played from the green. A stroke with the putter from the fringe or anywhere else off the green is logged from Fairway or Rough: it counts as around the green, not in your putts.'],
     [CARD ? 'Imported scorecards' : 'TheGrint rounds', 'Setup', 'Totals, greens, fairways, putts, penalties and hole history. They carry no split by part of the game, because they have no shot distances.']
   ];
   h += `<section class="card"><h2 class="h2">What each input changes</h2><div class="reflist">${ref.map(r => `<div class="refrow"><b>${r[0]}</b><span>${r[1]}</span><p>${r[2]}</p></div>`).join('')}</div></section>`;
@@ -2112,7 +2114,8 @@ function vGuide() {
 /* ---------- Setup ---------- */
 function vSetup() {
   const st = S.settings, o = opts(), G = E.aggregate(statRounds(), base(), o), px = E.clubProx(G.recs, o);
-  let h = vImport() + mapSetup() + `<section class="card"><h2 class="h2">Your bag</h2><p class="sub">Carry and total in yards. The ± columns describe your shot pattern: about 2 shots in 3 finish within that many yards left or right, and long or short, of where you aimed. The aim planner uses them.</p>
+  let h = vImport() + mapSetup() + `<section class="card" id="bagCard"><h2 class="h2">Your bag</h2><p class="sub">Your clubs and how far you hit them, in yards. Carry picks the club the shot pad suggests. The ± columns describe your shot pattern: about 2 shots in 3 finish within that many yards left or right, and long or short, of where you aimed. The aim tools use them.</p>
+    <p class="sub" id="bagSaved">Each change is saved on this device as soon as you leave the box, and stays for every round until you change it again.</p>
     ${st.bagEstimated ? `<p class="note">These distances are estimates worked out from a 105 mph driver swing. Replace them with your simulator carries.</p>` : ''}
     ${tbl(['Club','Carry','Total','± left-right','± long-short','From your rounds',''], st.bag.map((c, i) => [`<input class="wide" id="bag-name-${i}" type="text" data-ch="bag" data-i="${i}" data-k="name" value="${esc(c.name)}" aria-label="Club name">`,
       ...['carry','total','lat','depth'].map(k => `<input id="bag-${k}-${i}" type="text" inputmode="numeric" data-ch="bag" data-i="${i}" data-k="${k}" value="${esc(c[k])}" aria-label="${k}, ${esc(c.name)}">`),
@@ -2437,6 +2440,16 @@ async function saveFile(name, text, type) {
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 8000);
   return 'saved';
+}
+/* ---------- your bag: a new golfer starts with a standard bag and is asked once, before the first round, to make it their own ---------- */
+const BAG_HINT = 'strokeLedger.bagHint';
+const bagHintSeen = () => { try { return localStorage.getItem(BAG_HINT) === '1'; } catch (e) { return true; } };
+/** True while the bag is still exactly the standard one a new golfer starts with. */
+const bagIsStandard = () => { const b = S.settings.bag; return b.length === DEF_BAG.length && b.every((c, i) => { const d = DEF_BAG[i]; return c.id === d.id && c.name === d.name && +c.carry === d.carry && +c.total === d.total && +c.lat === d.lat && +c.depth === d.depth; }); };
+function bagNudge() {
+  if (practice || bagHintSeen() || !(bagIsStandard() || S.settings.bagEstimated)) return '';
+  const why = S.settings.bagEstimated ? 'Your bag still holds estimated distances.' : 'The app starts with a standard set of 14 clubs and typical distances.';
+  return `<div class="note maphint bknag" id="bagNudge"><span><b>Set up your bag.</b> ${why} Put in the clubs you carry and how far you hit them, so the suggested club and the aim tools fit your game. It is saved on this device for every round, and you can change it whenever you like.</span><span class="btnrow"><button type="button" class="btn sm" data-act="bagSetup">Set up my bag</button><button type="button" class="btn ghost sm" data-act="bagKeep">Keep this bag</button></span></div>`;
 }
 /* ---------- backup reminders: the rounds live only on this device until a backup file is saved somewhere else ---------- */
 const BK_AT = 'strokeLedger.backupAt';
@@ -2829,6 +2842,8 @@ Object.assign(ACT, {
     catch (e) { if (msg) msg.textContent = "Couldn't save a file here."; }
   },
   hintOff: () => { try { localStorage.setItem('strokeLedger.hint', '1'); } catch (e) { /* ignore */ } render(); },
+  bagSetup: () => { go('setup'); const el = $('#bagCard'); if (el) el.scrollIntoView({ block:'start' }); },
+  bagKeep: () => { try { localStorage.setItem(BAG_HINT, '1'); } catch (e) { /* ignore */ } render(); },
   useGps: el => {
     const m = measuredClubs()[el.dataset.c], k = club(el.dataset.c); if (!m || !k || m.nFull < GPS_MIN.d) return;
     const ratio = +k.total > 0 && +k.carry > 0 ? +k.carry / +k.total : 0.94;

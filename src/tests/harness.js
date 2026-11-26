@@ -22,6 +22,7 @@ async function start(opt = {}) {
     let u = decodeURIComponent(q.url.split('?')[0]);
     if (!u.startsWith('/stroke-ledger/')) { s.writeHead(404); return s.end(); }
     u = u.slice('/stroke-ledger/'.length) || 'index.html';
+    if (state.files && Object.prototype.hasOwnProperty.call(state.files, u)) { s.writeHead(200, { 'content-type': TYPES[path.extname(u)] || 'application/octet-stream' }); return s.end(state.files[u]); }   // a test can stand in its own copy of a file, to play an older version of the app
     if (u === 'config.js') { s.writeHead(200, { 'content-type': TYPES['.js'] }); return s.end(`window.STROKE_LEDGER = { esriKey: ${JSON.stringify(state.key)} };`); }
     if (u === 'geo.js' && !opt.pins) {          // most tests start from unmapped courses: keep the club locations, drop the built-in pins
       const g = JSON.parse(fs.readFileSync(path.join(ROOT, 'src', 'geo.json'), 'utf8')); Object.values(g.courses).forEach(c => { c.holes = []; });

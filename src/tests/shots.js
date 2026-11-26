@@ -1,0 +1,22 @@
+const { start } = require('./harness');
+const TEE = [18.4370, -69.9905], G = [[18.44000, -69.99000], [18.44010, -69.98985], [18.44025, -69.98990], [18.44028, -69.99008], [18.44012, -69.99015]];
+(async () => {
+  let t = await start({ device: 'Desktop Chrome' }), p = t.page;
+  await t.open('courses');
+  await p.evaluate(([tee, g]) => { const d = JSON.parse(localStorage.getItem('strokeLedger.v1')); d.courses.list[0].holes[0].geo = { t: tee, g, u: 1 }; localStorage.setItem('strokeLedger.v1', JSON.stringify(d)); }, [TEE, G]);
+  await p.reload(); await p.waitForSelector('#tabs button');
+  await t.shot('d-courses', true);
+  await p.click('.maprow button'); await t.mapReady();
+  await p.click('button[data-act=mapEdHole][data-n="1"]'); await p.waitForTimeout(500);
+  await t.shot('d-editor');
+  t.ok(!(await p.evaluate(() => /iPhone/.test(navigator.userAgent))) && !(await t.text('#view')).includes('Home Screen'), 'desktop: no iPhone hint');
+  await t.end();
+  t = await start({}); p = t.page;
+  await t.open(); await t.shot('p-rounds', true);
+  await p.click('#tabs button[data-view=courses]'); await p.click('.holerow button'); await t.shot('p-courses', true);
+  await p.click('#setupBtn'); await t.shot('p-setup', true);
+  await p.click('#tabs button[data-view=guide]'); await t.shot('p-guide');
+  const over = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  t.ok(over <= 0, 'no sideways scroll on the phone', over);
+  await t.end();
+})().catch(e => { console.error(e); process.exit(1); });

@@ -1,0 +1,1413 @@
+{
+ "courses": {
+  "updatedAt": 0,
+  "list": [
+   {
+    "id": "sdcc-caobas",
+    "name": "SDCC Caobas",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       391,
+       188,
+       366,
+       409,
+       368,
+       155,
+       500,
+       480,
+       329
+      ]
+     },
+     {
+      "name": "Blue",
+      "yards": [
+       414,
+       208,
+       398,
+       426,
+       387,
+       185,
+       544,
+       515,
+       338
+      ]
+     },
+     {
+      "name": "Black",
+      "yards": [
+       433,
+       233,
+       411,
+       453,
+       403,
+       197,
+       559,
+       515,
+       357
+      ]
+     },
+     {
+      "name": "Yellow",
+      "yards": [
+       340,
+       175,
+       328,
+       375,
+       344,
+       114,
+       452,
+       441,
+       313
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 4,
+      "hcp": 7,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 5,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 9,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 1,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 13,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 3,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 11,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 15,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 17,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   },
+   {
+    "id": "sdcc-pinos",
+    "name": "SDCC Pinos",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       260,
+       408,
+       145,
+       412,
+       373,
+       140,
+       399,
+       521,
+       357
+      ]
+     },
+     {
+      "name": "Blue",
+      "yards": [
+       295,
+       445,
+       159,
+       426,
+       383,
+       155,
+       424,
+       544,
+       384
+      ]
+     },
+     {
+      "name": "Black",
+      "yards": [
+       332,
+       474,
+       169,
+       452,
+       403,
+       179,
+       469,
+       596,
+       434
+      ]
+     },
+     {
+      "name": "Yellow",
+      "yards": [
+       215,
+       399,
+       134,
+       404,
+       330,
+       132,
+       382,
+       483,
+       321
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 4,
+      "hcp": 16,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 2,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 14,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 6,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 12,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 18,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 4,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 10,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 8,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   },
+   {
+    "id": "sdcc-robles",
+    "name": "SDCC Robles",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       308,
+       147,
+       301,
+       325,
+       169,
+       128,
+       451,
+       363,
+       506
+      ]
+     },
+     {
+      "name": "Blue",
+      "yards": [
+       377,
+       156,
+       335,
+       328,
+       180,
+       170,
+       464,
+       385,
+       510
+      ]
+     },
+     {
+      "name": "White (Caobas/Robles card)",
+      "yards": [
+       325,
+       147,
+       320,
+       300,
+       169,
+       140,
+       399,
+       343,
+       500
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 4,
+      "hcp": 13,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 15,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 17,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 11,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 5,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 3,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 1,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 7,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 9,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   },
+   {
+    "id": "tg-links-casa-de-campo",
+    "name": "Links, Casa de Campo",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       319,
+       448,
+       356,
+       296,
+       149,
+       342,
+       480,
+       155,
+       394,
+       340,
+       371,
+       327,
+       121,
+       324,
+       355,
+       117,
+       455,
+       335
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 4,
+      "hcp": 11,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 3,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 9,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 13,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 15,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 7,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 1,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 17,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 5,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 12,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 2,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 10,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 18,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 8,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 4,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 16,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 14,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 6,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   },
+   {
+    "id": "tg-hard-rock-golf-club-at-cana-bay",
+    "name": "Hard Rock Golf Club At Cana Bay",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       350,
+       452,
+       334,
+       142,
+       384,
+       511,
+       254,
+       206,
+       374,
+       147,
+       493,
+       347,
+       414,
+       436,
+       120,
+       367,
+       514,
+       402
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 4,
+      "hcp": 13,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 9,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 5,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 15,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 11,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 3,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 17,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 7,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 1,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 14,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 12,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 16,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 4,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 2,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 18,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 6,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 10,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 8,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   },
+   {
+    "id": "tg-dye-fore-marina-chavon-casa-de-campo",
+    "name": "Dye Fore - Marina/Chavon",
+    "defaultTee": "White",
+    "tees": [
+     {
+      "name": "White",
+      "yards": [
+       500,
+       334,
+       162,
+       386,
+       375,
+       147,
+       317,
+       498,
+       359,
+       497,
+       371,
+       169,
+       354,
+       334,
+       172,
+       393,
+       302,
+       534
+      ]
+     }
+    ],
+    "holes": [
+     {
+      "par": 5,
+      "hcp": 5,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 7,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 17,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 1,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 9,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 15,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 13,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 11,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 3,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 4,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 2,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 14,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 8,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 12,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 3,
+      "hcp": 16,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 10,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 4,
+      "hcp": 18,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     },
+     {
+      "par": 5,
+      "hcp": 6,
+      "plan": {
+       "club": "",
+       "aim": "",
+       "avoid": "",
+       "notes": ""
+      }
+     }
+    ]
+   }
+  ]
+ },
+ "rounds": {
+  "example-1": {
+   "id": "example-1",
+   "example": true,
+   "date": "2026-11-01",
+   "createdAt": 1794254400000,
+   "updatedAt": 1794254400000,
+   "notes": "Example round with invented shots. Delete it once you have logged your own.",
+   "segs": [
+    {
+     "courseId": "sdcc-caobas",
+     "name": "SDCC Caobas",
+     "tee": "White"
+    }
+   ],
+   "holes": [
+    {
+     "cid": "sdcc-caobas",
+     "n": 1,
+     "par": 4,
+     "yards": 391,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 391,
+       "c": "D",
+       "m": "R"
+      },
+      {
+       "lie": "rgh",
+       "d": 165,
+       "c": "6i",
+       "m": "S"
+      },
+      {
+       "lie": "fwy",
+       "d": 25,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 12,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 2,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 2,
+     "par": 3,
+     "yards": 188,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 188,
+       "c": "5i",
+       "m": "L"
+      },
+      {
+       "lie": "snd",
+       "d": 18,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 15,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 3,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 3,
+     "par": 4,
+     "yards": 366,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 366,
+       "c": "D"
+      },
+      {
+       "lie": "fwy",
+       "d": 128,
+       "c": "PW"
+      },
+      {
+       "lie": "grn",
+       "d": 24,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 2,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 4,
+     "par": 4,
+     "yards": 409,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 409,
+       "c": "D",
+       "m": "R",
+       "p": 1
+      },
+      {
+       "lie": "tee",
+       "d": 409,
+       "c": "3W"
+      },
+      {
+       "lie": "fwy",
+       "d": 190,
+       "c": "5i",
+       "m": "S"
+      },
+      {
+       "lie": "rgh",
+       "d": 30,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 9,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 1,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 5,
+     "par": 4,
+     "yards": 368,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 368,
+       "c": "3W"
+      },
+      {
+       "lie": "fwy",
+       "d": 140,
+       "c": "9i"
+      },
+      {
+       "lie": "grn",
+       "d": 30,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 4,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 6,
+     "par": 3,
+     "yards": 155,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 155,
+       "c": "8i"
+      },
+      {
+       "lie": "grn",
+       "d": 18,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 2,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 7,
+     "par": 5,
+     "yards": 500,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 500,
+       "c": "D"
+      },
+      {
+       "lie": "fwy",
+       "d": 255,
+       "c": "5W"
+      },
+      {
+       "lie": "fwy",
+       "d": 60,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 7,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 8,
+     "par": 5,
+     "yards": 480,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 480,
+       "c": "D",
+       "m": "L"
+      },
+      {
+       "lie": "rec",
+       "d": 240,
+       "c": "9i"
+      },
+      {
+       "lie": "fwy",
+       "d": 150,
+       "c": "8i",
+       "m": "L"
+      },
+      {
+       "lie": "snd",
+       "d": 12,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 20,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 3,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 1,
+       "c": "P"
+      }
+     ],
+     "done": true
+    },
+    {
+     "cid": "sdcc-caobas",
+     "n": 9,
+     "par": 4,
+     "yards": 329,
+     "shots": [
+      {
+       "lie": "tee",
+       "d": 329,
+       "c": "3W"
+      },
+      {
+       "lie": "fwy",
+       "d": 95,
+       "c": "SW"
+      },
+      {
+       "lie": "grn",
+       "d": 14,
+       "c": "P"
+      },
+      {
+       "lie": "grn",
+       "d": 1,
+       "c": "P"
+      }
+     ],
+     "done": true
+    }
+   ]
+  }
+ },
+ "dirty": {
+  "s": false,
+  "c": false,
+  "r": {}
+ },
+ "tomb": {}
+}

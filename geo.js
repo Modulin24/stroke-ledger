@@ -1,0 +1,2 @@
+/* Tee and green pins for the courses that come with the app. Built from src/geo.json. */
+window.SL_GEO = {"v":1,"courses":{"sdcc-caobas":{"loc":[18.43733,-69.99003],"holes":[]},"sdcc-pinos":{"loc":[18.43733,-69.99003],"holes":[]},"sdcc-robles":{"loc":[18.43733,-69.99003],"holes":[]},"tg-links-casa-de-campo":{"loc":[18.41243,-68.93211],"holes":[]},"tg-hard-rock-golf-club-at-cana-bay":{"loc":[18.7256,-68.48083],"holes":[]},"tg-dye-fore-marina-chavon-casa-de-campo":{"loc":[18.42343,-68.89119],"holes":[]}}};

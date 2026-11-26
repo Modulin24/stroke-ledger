@@ -112,12 +112,16 @@ const SGE = (() => {
     let pens = 0, putts = 0;
     const penBefore = [];
     for (let i = 0; i < n; i++) {
-      const s = sh[i], nx = sh[i+1], p = s.p || 0;
+      const s = sh[i], p = s.p || 0;
       penBefore.push(pens);
+      // A putt whose length was not logged (u): its stroke counts, and the shot before it carries its strokes gained.
+      if (s.u) { out.push({ e0:null, e1:null, sg:null, cat:'putt', u:true }); pens += p; putts++; continue; }
+      let j = i + 1, k = 0; while (sh[j] && sh[j].u) { k += 1 + (sh[j].p || 0); j++; }
+      const nx = sh[j];
       const e0 = expected(s.lie, s.d, base);
       const e1 = nx ? expected(nx.lie, nx.d, base) : h.done ? 0 : (h.next && h.next.d > 0 ? expected(h.next.lie, h.next.d, base) : null);
       const cat = s.lie === 'grn' ? 'putt' : (s.lie === 'tee' && h.par >= 4) ? 'ott' : (s.d <= o.argYards ? 'arg' : 'app');
-      const v = e1 == null ? null : e0 - e1 - 1 - p;
+      const v = e1 == null ? null : e0 - e1 - 1 - p - k;
       if (v != null) { sg[cat] += v; sg.tot += v; }
       out.push({ e0, e1, sg: v, cat });
       pens += p; if (s.lie === 'grn') putts++;
@@ -168,9 +172,10 @@ const SGE = (() => {
       A.shot++; A.all.sg += a.sg.tot; A.all.n++;
       for (const k in a.sg) A.sg[k] += a.sg[k];
       h.shots.forEach((s, i) => {
+        if (s.u) return;                    // a putt with no length logged has no row of its own: its strokes gained sit on the putt before it
         const nx = h.shots[i+1];
         A.recs.push({ rid:r.id, date:r.date, cid:h.cid, hn:h.n, hi, par:h.par, i, lie:s.lie, d:+s.d, c:s.c || '', m:s.m || '', p:s.p || 0,
-          sg:a.shots[i].sg, cat:a.shots[i].cat, nl: nx ? nx.lie : 'holed', nd: nx ? +nx.d : 0, left:a.left[i] });
+          sg:a.shots[i].sg, cat:a.shots[i].cat, nl: nx ? nx.lie : 'holed', nd: nx ? (nx.u ? 0 : +nx.d) : 0, left:a.left[i] });
       });
     });
     return A;

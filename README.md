@@ -23,7 +23,7 @@ On an iPhone, open that link in Safari, tap Share, then **Add to Home Screen**.
   from the sources in `src/` by running `python3 src/build.py`. Edit the sources, not the built files.
 - `src/geo.json` holds the tee and green pins that ship with the app. `python3 src/add_map.py <map file>`
   adds the pins from a course map file saved in the app's Setup page.
-- Tests: `node src/tests/t1_map_hole.js` (and `t2`, `t3`, `t4`) run the app in an emulated iPhone.
+- Tests: `node src/tests/t1_map_hole.js` (and `t2` to `t7`) run the app in an emulated iPhone.
 
 ## Licences of the parts used
 

@@ -211,6 +211,7 @@ function vRoundList() {
   const cs = S.courses.list, rs = allRounds().reverse(), nr = S.ui.nr;
   let h = '';
   if (IOS && !STANDALONE && !hintSeen()) h += `<div class="note maphint"><span><b>Put this app on your Home Screen.</b> In Safari, tap the Share button, then Add to Home Screen. Do it before you enter rounds: the Home Screen app keeps its own data.</span><button type="button" class="btn ghost sm" data-act="hintOff">Got it</button></div>`;
+  h += backupNag();
   if (!cs.length) {
     h += `<section class="card"><h2 class="h2">New round</h2><p class="empty">${S.sync.state === 'loading' || S.sync.state === 'starting' ? 'Loading your courses.' : 'Add a course first. Each course needs a par and a yardage for every hole.'}</p><div class="btnrow"><button class="btn" data-act="go" data-view="courses">Go to Courses</button></div></section>`;
   } else {
@@ -244,21 +245,53 @@ function normRound(r) {            // older saves kept the ball's current spot a
   (r.holes || []).forEach(h => { h.shots = h.shots || []; if (!h.done && h.shots.length && !h.next) { const s = h.shots.pop(); h.next = backTo(s); } });
   return r;
 }
+/** The club the shot pad starts on. On the green, the putter. From the tee, the hole plan's club, else the longest club on a par 4 or 5.
+    Inside the around-the-green distance, the club used most often from there before. Otherwise the club whose carry is nearest the distance. */
+function suggestClub(h, st, d0) {
+  const put = putterId();
+  if (st.lie === 'grn') return put;
+  if (st.lie === 'rec') return '';                       // a recovery shot is anyone's guess
+  const full = S.settings.bag.filter(k => +k.carry > 0 && k.id !== put); if (!full.length) return '';
+  const x = holeDef(h), plan = (x && x.plan) || {}, first = !h.shots.length, reach = k => +k.total || +k.carry;
+  if (first && plan.club && full.some(k => k.id === plan.club)) return plan.club;
+  if (first && h.par >= 4) return full.slice().sort((p, q) => reach(q) - reach(p))[0].id;
+  const d = first && pf(d0) > 0 ? pf(d0) : +st.d; if (!(d > 0)) return '';
+  const arg = opts().argYards;
+  if (!first && d <= arg) {
+    const n = {};
+    Object.values(S.rounds).forEach(r => { if (!r.example) (r.holes || []).forEach(z => (z.shots || []).forEach(s => { if (s.c && s.lie !== 'grn' && s.lie !== 'tee' && +s.d <= arg && full.some(k => k.id === s.c)) n[s.c] = (n[s.c] || 0) + 1; })); });
+    const top = Object.keys(n).sort((a, b) => n[b] - n[a])[0];
+    return top || full.slice().sort((p, q) => +p.carry - +q.carry)[0].id;
+  }
+  const pool = first ? full : full.filter(k => k.id !== 'D' && !/driver/i.test(k.name));
+  return (pool.length ? pool : full).slice().sort((p, q) => Math.abs(+p.carry - d) - Math.abs(+q.carry - d))[0].id;
+}
 function padFor(r, hi) {
   const h = r.holes[hi], n = h.shots.length, key = `${r.id}:${hi}:${n}`;
   if (S.ui.pad && S.ui.pad.key === key) return S.ui.pad;
   const st = startPos(h);
   const lie = st.lie === 'grn' ? 'grn' : (st.lie === 'tee' && h.par >= 4) ? 'fwy' : st.d <= 260 ? 'grn' : 'fwy';
-  return (S.ui.pad = { key, lie, d:'', d0:String(st.d || ''), c: st.lie === 'grn' ? putterId() : '', m:'', p:0, err:'' });
+  const c = suggestClub(h, st, st.d);
+  return (S.ui.pad = { key, lie, d:'', d0:String(st.d || ''), c, cAuto: !!c, m:'', p:0, err:'' });
 }
+/** A par 3 whose yardage changed (tee or flag moved): pick the club again, unless the golfer already chose one. */
+function resuggest(h, p) { if (p && p.cAuto && !h.shots.length) { p.c = suggestClub(h, startPos(h), p.d0); p.cAuto = !!p.c; } }
+/** Where the aim was, if the aim tool is on for this shot: kept with the shot so the GPS can later measure how far off line it finished. */
+function aimNow(h) { const r = curRound(), geo = h && geoOf(holeDef(h)); if (!r || !geo || curHole() !== h) return null; const a = aimState(r, S.ui.hole, geo); return a && SLMap.ok(a.pt) ? SLMap.r6(a.pt) : null; }
 function mkShot(h, p) {
   const st = startPos(h), d0 = h.shots.length ? st.d : (pf(p.d0) > 0 ? pf(p.d0) : st.d);
   const s = { lie:st.lie, d:d0, c:p.c || '' };
   const g0 = h.shots.length ? st.g : h.tg; if (g0) s.g = g0;
   if (p.m) s.m = p.m;
   if (p.p) s.p = p.p;
+  if (st.lie !== 'grn') { const a = aimNow(h); if (a) s.a = a; }
   return s;
 }
+/** Take the last shot off a hole. Putts logged by "2 putts" or "3 putts" with no length come off together with the putt that
+    started them, so the ball goes back to a spot whose distance is known. */
+function popShot(h) { let s = h.shots.pop(); while (s && s.u && h.shots.length) s = h.shots.pop(); return s; }
+const spotText = x => x.u ? 'Green, length not logged' : posText(x.lie, x.d);
+const unloggedAfter = (h, i) => { let k = 0; for (let j = i + 1; h.shots[j] && h.shots[j].u; j++) k++; return k; };
 function vRound(r) {
   const o = opts(), a = E.analyzeRound(r, base(), o);
   const hi = S.ui.hole = Math.max(0, Math.min(S.ui.hole | 0, r.holes.length - 1));
@@ -280,37 +313,38 @@ function vRound(r) {
   out += mapPanel(r, hi);
   let list = '';
   if (n) list = `<ul class="shots">` + h.shots.map((s, i) => {
-    const x = ha.shots[i], ed = S.ui.editShot === i, nx = h.shots[i + 1] || (!h.done && h.next) || null, holed = !nx && h.done;
-    const bits = [hitText(h, i), s.m && 'missed ' + missText(s.m), s.p && `+${s.p} penalty`].filter(Boolean).join(' · ');
+    const x = ha.shots[i], ed = S.ui.editShot === i, nx = h.shots[i + 1] || (!h.done && h.next) || null, holed = !nx && h.done, more = unloggedAfter(h, i);
+    const bits = [hitText(h, i), s.m && 'missed ' + missText(s.m), s.p && `+${s.p} penalty`, more && `strokes gained includes the next ${more > 1 ? more + ' putts' : 'putt'}`, s.u && 'counted in the putt before'].filter(Boolean).join(' · ');
     let row = `<li class="shot"><button class="shot-main" data-act="editShot" data-i="${i}" aria-expanded="${ed}"><span class="sn num">${i + 1}</span><span class="liedot ${nx ? 'z-' + nx.lie : 'z-hole'}"></span>
-      <span class="sl"><b>${s.c ? esc(clubName(s.c)) : 'Shot ' + (i + 1)}</b><span>${posText(s.lie, s.d)} → ${nx ? posText(nx.lie, nx.d) : holed ? 'holed' : '…'}</span>${bits ? `<small>${bits}</small>` : ''}</span>${sgChip(x.sg)}</button>`;
+      <span class="sl"><b>${s.c ? esc(clubName(s.c)) : 'Shot ' + (i + 1)}</b><span>${spotText(s)} → ${nx ? spotText(nx) : holed ? 'holed' : '…'}</span>${bits ? `<small>${bits}</small>` : ''}</span>${s.u ? '<span class="sgc pend">–</span>' : sgChip(x.sg)}</button>`;
     if (ed) row += `<div class="shot-ed"><div class="chips"><span class="lbl">Club</span>${clubChips('edClub', s.c, `data-i="${i}"`)}</div>
       ${i === 0 ? `<label class="f inline">Hit from<input id="ed-d0" type="text" inputmode="decimal" autocomplete="off" data-ch="edD0" value="${esc(s.d)}"><span>yards</span></label>` : ''}
-      ${nx ? `<div class="chips"><span class="lbl">Finished</span>${lieChips('edLie', nx.lie, `data-i="${i}"`)}</div>
-      <label class="f inline">Left to the hole<input id="ed-d" type="text" inputmode="decimal" autocomplete="off" data-ch="edD" data-i="${i}" value="${esc(nx.d)}"><span>${nx.lie === 'grn' ? 'feet' : 'yards'}</span></label>` : ''}
-      <div class="chips"><span class="lbl">Missed</span>${missChips('edMiss', s.m, `data-i="${i}"`)}</div>
-      <div class="chips"><span class="lbl">Penalty strokes</span>${seg('edPen', String(s.p || 0), [['0','None'],['1','+1'],['2','+2']], `data-i="${i}"`)}</div>
-      <div class="btnrow"><button class="btn ghost sm danger" data-act="delShot" data-i="${i}">Delete shot</button><span class="grow"></span><button class="btn sm" data-act="editShot" data-i="${i}">Done</button></div></div>`;
+      ${nx && !s.u ? `${nx.u ? '' : `<div class="chips"><span class="lbl">Finished</span>${lieChips('edLie', nx.lie, `data-i="${i}"`)}</div>`}
+      <label class="f inline">Left to the hole<input id="ed-d" type="text" inputmode="decimal" autocomplete="off" data-ch="edD" data-i="${i}" value="${esc(nx.u ? '' : nx.d)}"${nx.u ? ' placeholder="not logged"' : ''}><span>${nx.lie === 'grn' ? 'feet' : 'yards'}</span></label>` : ''}
+      ${s.u ? '' : `<div class="chips"><span class="lbl">Missed</span>${missChips('edMiss', s.m, `data-i="${i}"`)}</div>
+      <div class="chips"><span class="lbl">Penalty strokes</span>${seg('edPen', String(s.p || 0), [['0','None'],['1','+1'],['2','+2']], `data-i="${i}"`)}</div>`}
+      <div class="btnrow"><button class="btn ghost sm danger" data-act="delShot" data-i="${i}">${s.u ? 'Delete this putt' : 'Delete shot'}</button><span class="grow"></span><button class="btn sm" data-act="editShot" data-i="${i}">Done</button></div></div>`;
     return row + `</li>`;
   }).join('') + `</ul>`;
   const mapped = MAPS && !!geoOf(holeDef(h));          // with a map, the shot pad sits right under the photo and the list follows it
   if (!mapped || ha.done) out += list;
   if (ha.done) {
     out += `<div class="holed"><div class="res"><span class="big num">${ha.score}</span><span>${scoreName(ha.score - h.par)}</span>${sgChip(ha.sg.tot)}</div>
-      <div class="btnrow"><button class="btn ghost sm" data-act="reopen">Reopen hole</button>${hi < r.holes.length - 1 ? `<button class="btn flag" data-act="hole" data-i="${hi + 1}">Next hole ›</button>` : `<button class="btn flag" data-act="closeRound">Finish round</button>`}</div></div>`;
+      <div class="btnrow"><button class="btn ghost sm" data-act="reopen">Reopen hole</button>${hi < r.holes.length - 1 ? `<button class="btn flag" data-act="hole" data-i="${hi + 1}">Next hole ›</button>` : `<button class="btn flag" data-act="finishRound">Finish round</button>`}</div></div>`;
   }
   out += `</section>`;
   if (!ha.done) {
     const p = padFor(r, hi), st = startPos(h);
     out += `<form class="card pad" data-sub="addShot"><div class="padhead"><span class="lbl">Shot ${n + 1}</span><b>${n ? `From ${FROM[st.lie]}, ${dist(st.d)} ${st.lie === 'grn' ? 'feet' : 'yards'} out` : 'From the tee'}</b></div>${markRow(h, p, n)}
-      ${n ? '' : `<label class="f inline">Hole plays<input id="pad-d0" type="text" inputmode="numeric" autocomplete="off" data-in="padD0" value="${esc(p.d0)}"><span>yards today</span></label>`}
-      <div class="chips"><span class="lbl">Club</span>${clubChips('padClub', p.c)}</div>
+      ${n ? '' : `<label class="f inline">Hole plays<input id="pad-d0" type="text" inputmode="numeric" autocomplete="off" data-in="padD0" data-ch="padD0" value="${esc(p.d0)}"><span>yards today</span></label>`}
+      <div class="chips"><span class="lbl">Club</span>${p.cAuto && p.c && st.lie !== 'grn' ? `<em class="tag alt" id="clubSugg">Suggested</em>` : ''}${clubChips('padClub', p.c)}</div>
       <div class="chips"><span class="lbl">Where did it finish?</span>${lieChips('padLie', p.lie, '', ['fwy','rgh','snd','rec','grn'])}</div>
       <label class="dist"><input id="pad-d" type="text" inputmode="decimal" autocomplete="off" data-in="padD" value="${esc(p.d)}" placeholder="0" aria-label="Distance left to the hole"><span>${p.lie === 'grn' ? 'feet' : 'yards'} left to the hole</span></label>
       ${p.err ? `<p class="err" role="alert">${esc(p.err)}</p>` : ''}
       <div class="pad-last"><span class="lbl">Missed</span>${missChips('padMiss', p.m)}<span class="lbl">Penalty</span>${seg('padPen', String(p.p || 0), [['0','None'],['1','+1'],['2','+2']])}</div>
-      <div class="btnrow"><button class="btn" type="submit">Save shot</button><button class="btn flag" type="button" data-act="holed">Holed it</button><span class="grow"></span><button class="btn ghost sm" type="button" data-act="rehit">OB or lost: re-hit</button>${n ? `<button class="btn ghost sm" type="button" data-act="undoShot">Undo last shot</button>` : ''}</div>
-      <p class="sub">Pick the club you hit, then say where the ball finished and how far it has left. ${geoOf(holeDef(h)) ? 'Marking the ball on the map fills in the distance for you. ' : ''}Tap Holed it when the shot goes in. Missed and Penalty are optional.</p></form>`;
+      <div class="btnrow"><button class="btn" type="submit">Save shot</button><button class="btn flag" type="button" data-act="holed">Holed it</button>${st.lie === 'grn' ? `<button class="btn ghost" type="button" data-act="putts" data-v="2">2 putts</button><button class="btn ghost" type="button" data-act="putts" data-v="3">3 putts</button>` : ''}<span class="grow"></span><button class="btn ghost sm" type="button" data-act="rehit">OB or lost: re-hit</button>${n ? `<button class="btn ghost sm" type="button" data-act="undoShot">Undo last shot</button>` : ''}</div>
+      ${st.lie === 'grn' ? `<p class="sub">2 putts and 3 putts finish the hole from here. Type the next putt's length first if you know it. Left blank, the app scores your putting from this putt's length and the number of putts.</p>` : ''}
+      <p class="sub">${st.lie === 'grn' ? '' : p.cAuto && p.c ? 'The club is picked for you from the hole plan or the distance: tap another if you hit something else. ' : 'Pick the club you hit. '}Say where the ball finished and how far it has left. ${geoOf(holeDef(h)) ? 'Marking the ball on the map fills in the distance for you. ' : ''}Tap Holed it when the shot goes in. Missed and Penalty are optional.</p></form>`;
   }
   if (mapped && !ha.done && n) out += `<section class="card"><h3 class="h3">Shots on this hole</h3>${list}</section>`;
   if (anySg) {
@@ -322,6 +356,7 @@ function vRound(r) {
   }
   const top5 = bestOf(shotsOf(r, a), 5);
   if (top5.length) out += `<section class="card"><h3 class="h3">${top5.length === 5 ? 'Best 5 shots of the round' : 'Best shots of the round so far'}</h3>${shotRows(top5, false)}<p class="sub">Ranked by strokes gained against the ${esc(E.BASES[base()])} benchmark. Tap a shot to go to its hole.</p></section>`;
+  if (mapped) out += `<section class="card"><div class="btnrow"><span class="lbl">GPS updates</span>${seg('gpsMode', SLMap.gps.mode, [['live','Live'],['tap','Battery saver']])}</div><p class="sub">${SLMap.gps.mode === 'tap' ? 'Battery saver: the GPS wakes only when you tap Mark ball here, Me or the GPS button on the photo.' : 'Live: the GPS follows you while the photo is on screen. Battery saver uses less power.'}</p></section>`;
   out += `<section class="card"><label class="f">Round notes<textarea id="r-notes" data-ch="roundNotes">${esc(r.notes || '')}</textarea></label>
     <div class="btnrow">${S.ui.confirm === 'delRound' ? `<span>Delete this round for good?</span><button class="btn sm danger ghost" data-act="delRound">Delete</button><button class="btn sm ghost" data-act="cancel">Keep</button>` : `<button class="btn sm ghost danger" data-act="ask" data-v="delRound">Delete round</button>`}</div></section>`;
   return out;
@@ -335,8 +370,8 @@ function shotsOf(r, a) {
     const ha = a.holes[hi]; if (!ha || ha.card) return;
     (h.shots || []).forEach((s, i) => {
       const sg = ha.shots[i] && ha.shots[i].sg; if (sg == null) return;
-      const nx = h.shots[i + 1] || (h.done ? null : h.next), holed = !h.shots[i + 1] && h.done;
-      out.push({ rid:r.id, date:r.date, cid:h.cid, hn:h.n, hi, par:h.par, i, lie:s.lie, d:+s.d, c:s.c || '', sg, cat:ha.shots[i].cat, nl: holed ? 'holed' : nx ? nx.lie : '', nd: holed || !nx ? 0 : +nx.d });
+      const nx = h.shots[i + 1] || (h.done ? null : h.next), holed = !h.shots[i + 1] && h.done, more = unloggedAfter(h, i);
+      out.push({ rid:r.id, date:r.date, cid:h.cid, hn:h.n, hi, par:h.par, i, lie:s.lie, d:+s.d, c:s.c || '', sg, cat:ha.shots[i].cat, nl: holed ? 'holed' : more ? 'putts' : nx ? nx.lie : '', nd: holed || !nx ? 0 : more ? more + 1 : +nx.d });
     });
   });
   return out;
@@ -345,7 +380,7 @@ const bestOf = (list, n) => list.slice().sort((p, q) => q.sg - p.sg || (p.date <
 function shotRows(list, withRound) {
   return `<ol class="best">${list.map((x, i) => { const c = courseById(x.cid);
     return `<li><button type="button" data-act="openShot" data-r="${esc(x.rid)}" data-h="${x.hi}"><span class="sn num">${i + 1}</span>
-      <span class="bl"><b>${esc(clubName(x.c) || 'Shot')}</b><span>${posText(x.lie, x.d)} → ${x.nl === 'holed' ? 'holed' : x.nl ? posText(x.nl, x.nd) : ''}</span>
+      <span class="bl"><b>${esc(clubName(x.c) || 'Shot')}</b><span>${posText(x.lie, x.d)} → ${x.nl === 'holed' ? 'holed' : x.nl === 'putts' ? `holed in ${x.nd} putts` : x.nl ? posText(x.nl, x.nd) : ''}</span>
       <small>${withRound ? `${dateLabel(x.date)} · ${esc(c ? c.name : 'Round')}, hole ${x.hn}` : `Hole ${x.hi + 1}`} · par ${x.par} · ${CATN[x.cat]}</small></span>${sgChip(x.sg)}</button></li>`; }).join('')}</ol>`;
 }
 function vBest() {
@@ -1035,10 +1070,11 @@ function vGuide() {
   const ref = [
     ['Where the shot finished', 'Shot pad', 'Strokes gained for that shot and the next one, the fairway and green counts, and which part of the game the next shot belongs to.'],
     ['Distance left', 'Shot pad', 'Strokes gained for that shot and the next one. Yards off the green, feet on it.'],
-    ['Club', 'Shot pad', 'Which row the shot lands in on the by-club tables in Stats, and the From your rounds column in Setup. It never changes strokes gained.'],
+    ['Club', 'Shot pad', 'Which row the shot lands in on the by-club tables in Stats, the From your rounds column and the Measured on the course table in Setup. It never changes strokes gained. The pad starts on a suggested club (the hole plan, else the distance), so change it whenever you hit something else.'],
     ['Missed left, right, short, long', 'Shot pad', "The miss percentages for tee shots. It never changes strokes gained."],
     ['Penalty', 'Shot pad', "One stroke off that shot's strokes gained for each penalty stroke, plus your score and the penalty count."],
     ['Holed it', 'Shot pad', 'Ends the hole. Sets the score and scores the last shot against zero strokes left.'],
+    ['2 putts, 3 putts', 'Shot pad, on the green', "Ends the hole with that many putts from here. If the next putt's length is typed it is used; a putt with no length counts in the score and the putts, and its strokes gained is added to the putt before it. It has no row in Putting by length."],
     ['Hole plays X yards today', 'First shot of a hole', "The tee shot's strokes gained and the hole's total."],
     ['OB or lost: re-hit', 'Shot pad', 'Adds a penalty stroke and puts the ball back where it was, so that shot scores −2.00.'],
     ['Benchmark', 'Header', 'Every strokes-gained number. Scores, greens, fairways and putts do not change.'],
@@ -1048,7 +1084,7 @@ function vGuide() {
     [CARD ? 'Imported scorecards' : 'TheGrint rounds', 'Setup', 'Totals, greens, fairways, putts, penalties and hole history. They carry no split by part of the game, because they have no shot distances.']
   ];
   h += `<section class="card"><h2 class="h2">What each input changes</h2><div class="reflist">${ref.map(r => `<div class="refrow"><b>${r[0]}</b><span>${r[1]}</span><p>${r[2]}</p></div>`).join('')}</div></section>`;
-  if (S.sync.state === 'local') h += `<section class="card"><h2 class="h2">Where your data lives</h2><p class="sub">Everything you enter stays on this device, inside this app. Nothing is sent anywhere and nothing syncs between devices. In Setup, save a backup file now and then: it is the only copy outside this device, and loading it on another device is how you move your rounds.</p></section>`;
+  if (S.sync.state === 'local') h += `<section class="card"><h2 class="h2">Where your data lives</h2><p class="sub">Everything you enter stays on this device, inside this app. Nothing is sent anywhere and nothing syncs between devices. In Setup, save a backup file now and then: it is the only copy outside this device, and loading it on another device is how you move your rounds. Rounds shows a reminder whenever something has changed since the last backup file.</p></section>`;
   return h;
 }
 
@@ -1063,11 +1099,11 @@ function vSetup() {
       st.bag.length > 1 ? `<button type="button" class="btn ghost sm" data-act="delClub" data-i="${i}" aria-label="Remove ${esc(c.name)} from the bag">Remove</button>` : '']))}
     <div class="chips"><span class="lbl">Add a club</span>${CLUBS.filter(c => !st.bag.some(b => b.id === c.id)).map(c => `<button type="button" class="chip" data-act="addClub" data-v="${c.id}">+ ${esc(c.name)}</button>`).join('')}<button type="button" class="chip" data-act="addClub" data-v="">+ Custom club</button></div>
     <p class="sub">The shot pad shows the clubs in your bag, so keep it to the ones you carry. A club from this list comes with starting distances for you to replace.</p>
-    <p class="sub">"From your rounds" turns the average distance your logged approach shots finish from the hole into a ± figure, once a club has 3 or more shots.</p></section>
+    <p class="sub">"From your rounds" turns the average distance your logged approach shots finish from the hole into a ± figure, once a club has 3 or more shots.</p></section>${gpsClubCard()}
     <section class="card"><h2 class="h2">Rules</h2><div class="frow"><label class="f">Around the green starts inside, yds<input id="set-arg" type="text" inputmode="numeric" data-ch="setNum" data-k="argYards" value="${esc(st.argYards)}"></label>
     <label class="f">Tiger 5 scoring-club distance, yds<input id="set-wedge" type="text" inputmode="numeric" data-ch="setNum" data-k="wedgeYards" value="${esc(st.wedgeYards)}"></label></div>
     <p class="sub">Shots from the tee on par 4s and 5s count as off the tee. Shots inside the first distance that are not on the green count as around the green. Everything else off the green, par-3 tee shots included, is approach.</p></section>
-    <section class="card"><h2 class="h2">Backup</h2><p class="sub">Copy everything as text and keep it somewhere safe. To restore, paste a backup into the box and replace your data.</p>
+    <section class="card"><h2 class="h2">Backup</h2><p class="sub">Copy everything as text and keep it somewhere safe. To restore, paste a backup into the box and replace your data.</p>${backupFacts()}
     <textarea id="backup" data-in="backup" placeholder="Paste a backup here to restore it">${esc(S.ui.backup)}</textarea>
     <div class="btnrow"><button class="btn sm" data-act="copyBackup">Copy my data</button>${S.ui.confirm === 'restore' ? `<span>Replace all courses, rounds and settings with this backup?</span><button class="btn sm ghost danger" data-act="restore">Replace</button><button class="btn sm ghost" data-act="cancel">Keep mine</button>` : `<button class="btn sm ghost" data-act="ask" data-v="restore">Restore from pasted text</button>`}<span class="sub" id="backupMsg"></span></div>
     ${S.sync.state === 'local' && !(window.claude && typeof window.claude.use === 'function') ? `<div class="btnrow"><button class="btn sm ghost" data-act="saveBackupFile">Save a backup file</button><label class="f inline">Load a backup file<input type="file" id="bk-file" accept=".json,.txt,application/json,text/plain" data-ch="backupFile"></label></div>` : ''}</section>`;
@@ -1156,7 +1192,9 @@ function mapPanel(r, hi) {
 function liveMap() {
   const bar = $('#gpsBar'), g = MAPS && SLMap.gps; if (!bar || !g) return;
   const fx = SLMap.fresh();
-  bar.innerHTML = !g.want ? `<button type="button" class="off" data-act="gpsOn">GPS off</button>` : g.err && !fx ? `<button type="button" class="bad" data-act="gpsOn" title="${esc(g.err)}">No GPS</button>` : fx ? `<span>GPS<b>± ${yds(fx.acc * SLMap.YD)} yd</b></span>` : `<span>GPS<b>…</b></span>`;
+  const tap = g.mode === 'tap', acc = fx ? `GPS<b>± ${yds(fx.acc * SLMap.YD)} yd</b>` : '';
+  bar.innerHTML = !g.want ? `<button type="button" class="off" data-act="gpsOn">GPS off</button>` : g.err && !fx ? `<button type="button" class="bad" data-act="${tap ? 'gpsFix' : 'gpsOn'}" title="${esc(g.err)}">No GPS</button>`
+    : tap ? `<button type="button" data-act="gpsFix" title="Battery saver: tap for a GPS position">${fx ? acc : 'Get GPS'}</button>` : fx ? `<span>${acc}</span>` : `<span>GPS<b>…</b></span>`;
   const box = $('#fcb'), r = curRound(), h = curHole(), geo = h && geoOf(holeDef(h)); if (!box || !geo) return;
   const c = SLMap.centroid(geo.g), near = fx && SLMap.dist(fx.ll, c) < 900, p = S.ui.pad;
   const from = near ? fx.ll : (!h.done && p && p.g) || (h.done ? null : spotOf(h, geo));
@@ -1180,7 +1218,7 @@ function setTee(r, h, geo, ll) {
   h.tg = ll;
   const a = S.ui.aim; if (a && a.on && a.src === 'spot' && !h.shots.length) { a.from = ll; a.pt = null; }
   if (h.shots.length) return 'Tee moved for this round.';
-  if (h.par === 3) { const y = yds(SLMap.dist(ll, pinOf(h, geo))); padFor(r, S.ui.hole).d0 = y; return `Tee moved for this round. The hole now plays ${y} yards.`; }
+  if (h.par === 3) { const y = yds(SLMap.dist(ll, pinOf(h, geo))), p = padFor(r, S.ui.hole); p.d0 = y; resuggest(h, p); return `Tee moved for this round. The hole now plays ${y} yards.`; }
   return 'Tee moved for this round. If the hole plays longer or shorter today, change Hole plays below.';
 }
 const PLAY_H = {
@@ -1197,7 +1235,7 @@ const PLAY_H = {
     const h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo) return;
     if (SLMap.dist(ll, SLMap.centroid(geo.g)) > 45) { render(); say('The flag has to stay on the green.'); return; }
     h.pin = ll;
-    if (!h.shots.length && h.par === 3 && h.tg) padFor(curRound(), S.ui.hole).d0 = yds(SLMap.dist(h.tg, ll));          // a par 3 with today's tee marked plays tee to flag
+    if (!h.shots.length && h.par === 3 && h.tg) { const p = padFor(curRound(), S.ui.hole); p.d0 = yds(SLMap.dist(h.tg, ll)); resuggest(h, p); }          // a par 3 with today's tee marked plays tee to flag
     touchRound(S.ui.roundId);
     const p = S.ui.pad; if (p && p.g) setBall(p.g); else render();
   },
@@ -1271,6 +1309,69 @@ function hitText(h, i) {
   const d = SLMap.dist(a, b);
   return d >= 15 ? `${i === 0 && !h.tg ? 'about ' : ''}${yds(d)} yd shot` : '';
 }
+/** Club distances and shot patterns measured on the map. A shot counts when it was hit from the tee or the fairway, with a club,
+    no penalty, from outside the around-the-green distance, and both where it was hit from and where it finished are pinned.
+    The drive starts at the tee marked for that round, or at the hole's tee pin when that pin is within 10 yards of what the hole
+    played that day (otherwise the pin may sit on another tee box). Off line is measured against the aim saved with the shot,
+    else the hole plan's tee aim, else, on a straight hole (tee to green within 10 yards of the yardage), the line to the green.
+    A shot from within reach of the green is measured against the flag, which also gives long and short. */
+function measuredClubs() {
+  if (!MAPS) return {};
+  const o = opts(), raw = {}, add = (c, k, v) => { const m = raw[c] || (raw[c] = { d:[], lat:[], dep:[], td:[] }); m[k].push(v); };
+  Object.values(S.rounds).forEach(r => {
+    if (r.example) return;
+    (r.holes || []).forEach(h => {
+      const x = holeDef(h), geo = geoOf(x); if (!geo || !(h.shots || []).length) return;
+      const pin = pinOf(h, geo), cen = SLMap.centroid(geo.g), plan = (x && x.plan) || {};
+      h.shots.forEach((s, i) => {
+        if (!s.c || s.u || s.p || (s.lie !== 'tee' && s.lie !== 'fwy') || (s.lie !== 'tee' && +s.d <= o.argYards)) return;
+        const k = club(s.c); if (k && !(+k.carry > 0)) return;          // the putter
+        const nx = h.shots[i + 1] || (!h.done && h.next) || null; if (!nx || nx.u || !SLMap.ok(nx.g)) return;
+        let a = i === 0 ? teeOf(h, geo) : (SLMap.ok(s.g) ? s.g : null); if (!a) return;
+        const straight = Math.abs(SLMap.dist(a, cen) - +s.d) <= 10;
+        if (i === 0 && !h.tg && !straight) return;
+        const b = nx.g, d = SLMap.dist(a, b); if (d < 20) return;
+        const teeShot = i === 0 && h.par >= 4;
+        add(s.c, 'd', d); if (teeShot) add(s.c, 'td', d);
+        let tgt = SLMap.ok(s.a) ? s.a : null, atFlag = false;
+        if (!tgt && teeShot && SLMap.ok(plan.ag)) tgt = plan.ag;
+        if (!tgt && teeShot && straight) tgt = cen;
+        if (!tgt && !teeShot && SLMap.dist(a, pin) <= (k ? (+k.total || +k.carry) : 0) * 1.1 + 10) { tgt = pin; atFlag = true; }
+        if (!tgt) return;
+        const off = (SLMap.bearing(a, b) - SLMap.bearing(a, tgt)) * Math.PI / 180;
+        add(s.c, 'lat', d * Math.sin(off));
+        if (atFlag) add(s.c, 'dep', d * Math.cos(off) - SLMap.dist(a, tgt));
+      });
+    });
+  });
+  const med = xs => { const v = xs.slice().sort((p, q) => p - q), n = v.length; return n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2; };
+  const rms = xs => Math.sqrt(xs.reduce((t, v) => t + v * v, 0) / xs.length);
+  const out = {};
+  for (const c in raw) {
+    const m = raw[c], md = med(m.d), full = m.d.filter(v => v >= 0.8 * md);           // a mishit well short of the usual distance does not set it
+    const tf = m.td.filter(v => v >= 0.8 * md), tm = tf.length ? med(tf) : 0, dep = m.dep.concat(tf.map(v => v - tm));
+    out[c] = { n: m.d.length, nFull: full.length, typ: med(full), lo: Math.min(...m.d), hi: Math.max(...m.d),
+      nLat: m.lat.length, lat: m.lat.length ? rms(m.lat) : null, bias: m.lat.length ? m.lat.reduce((t, v) => t + v, 0) / m.lat.length : null,
+      nDep: dep.length, dep: dep.length ? rms(dep) : null };
+  }
+  return out;
+}
+const GPS_MIN = { d:3, pat:5 };          // shots needed before a measured number can replace the one in the bag
+function gpsClubCard() {
+  if (!MAPS) return '';
+  const M = measuredClubs(), bag = S.settings.bag.filter(c => M[c.id]);
+  let h = `<section class="card" id="gpsClubs"><h2 class="h2">Measured on the course</h2><p class="sub">Each club's distance and shot pattern from shots pinned on the map, by GPS or by tapping the photo. Distance is the total, roll included: GPS cannot see carry.</p>`;
+  if (!bag.length) return h + `<p class="empty">No measured shots yet. On the course, tap Mark ball here at each ball. A shot from the tee or the fairway counts once both ends of it are pinned.</p></section>`;
+  const side = v => v == null ? '–' : Math.abs(v) < 0.5 ? 'on line' : `${yds(Math.abs(v))} ${v > 0 ? 'right' : 'left'}`;
+  h += tbl(['Club','Shots','Typical','Shortest–longest','± left-right','Average miss','± long-short'], bag.map(c => { const m = M[c.id];
+    return [esc(c.name), m.n, m.nFull >= GPS_MIN.d ? `<b>${yds(m.typ)}</b>` : `${yds(m.typ)}<small> (needs ${GPS_MIN.d})</small>`, `${yds(m.lo)}–${yds(m.hi)}`,
+      m.nLat ? `± ${yds(m.lat)}<small> (${m.nLat})</small>` : '–', side(m.bias), m.nDep ? `± ${yds(m.dep)}<small> (${m.nDep})</small>` : '–'];
+  }));
+  const ready = bag.filter(c => M[c.id].nFull >= GPS_MIN.d);
+  if (ready.length) h += `<div class="chips"><span class="lbl">Use in bag</span>${ready.map(c => `<button type="button" class="chip" data-act="useGps" data-c="${esc(c.id)}">${esc(c.name)}</button>`).join('')}</div>`;
+  return h + `<p class="sub">Typical is the middle shot once mishits under 80% of it are left out. ± left-right is measured against the aim you set with Aim, the hole plan's tee aim, or on a straight hole the line to the green; shots hit from within reach of the green are measured against the flag, which also gives ± long-short. Shots with a penalty are left out, because where they finished is not on the map.</p>
+    <p class="sub">Use in bag sets the club's total to Typical and moves its carry by the same share. The ± figures change only once they rest on ${GPS_MIN.pat} shots or more. Your bag numbers drive the Aim tools only; strokes gained does not use them.</p></section>`;
+}
 function markRow(h, p, n) {
   if (!geoOf(holeDef(h))) return '';
   return `<div class="markrow"><button class="btn flag" type="button" data-act="markBall">Mark ball here</button>${n ? '' : `<button class="btn ghost sm" type="button" data-act="markTee">Mark the tee here</button>${h.tg ? `<button class="btn ghost sm" type="button" data-act="resetTee">Reset the tee</button>` : ''}`}${p.g ? `<button class="btn ghost sm" type="button" data-act="clearBall">Remove pin</button>` : ''}</div>
@@ -1286,7 +1387,8 @@ function mapSetup() {
   const g = SLMap.gps, fx = SLMap.fresh(), n = S.courses.list.reduce((t, c) => t + c.holes.filter(geoOf).length, 0);
   return `<section class="card"><h2 class="h2">Map and GPS</h2>
     <p class="sub">${SLMap.hasKey() ? 'Satellite photo: on.' : 'Satellite photo: off until the map key is added to the site. Pins and distances work without it.'} ${n} hole${n === 1 ? ' is' : 's are'} on the map. Add holes from Courses, or from a round.</p>
-    <div class="btnrow"><span class="lbl">GPS</span>${seg('gpsSet', g.want ? '1' : '0', [['1','On'],['0','Off']])}<span class="sub">${!g.want ? 'Off. Shots can still be marked by tapping the photo.' : g.err && !fx ? esc(g.err) : fx ? `Working, good to about ${yds(fx.acc * SLMap.YD)} yards.` : 'On. It runs while a map is on screen.'}</span></div>
+    <div class="btnrow"><span class="lbl">GPS</span>${seg('gpsSet', g.want ? '1' : '0', [['1','On'],['0','Off']])}<span class="sub">${!g.want ? 'Off. Shots can still be marked by tapping the photo.' : g.err && !fx ? esc(g.err) : fx ? `Working, good to about ${yds(fx.acc * SLMap.YD)} yards.` : g.mode === 'tap' ? 'On, in battery saver.' : 'On. It runs while a map is on screen.'}</span></div>
+    <div class="btnrow"><span class="lbl">GPS updates</span>${seg('gpsMode', g.mode, [['live','Live'],['tap','Battery saver']])}<span class="sub" id="gpsModeNote">${g.mode === 'tap' ? 'The GPS wakes only when you tap Mark ball here, Me, or the GPS button on the photo. Distances from where you stand then show for a minute.' : 'The GPS follows you the whole time a map is on screen, so the distances change as you walk. This uses the most battery.'}</span></div>
     <p class="sub">If an iPhone never asks for your location: open Settings, Privacy &amp; Security, Location Services, Safari Websites. Choose While Using the App and turn on Precise Location.</p>
     <div class="btnrow"><button class="btn sm ghost" data-act="saveMapFile">Save the course map file</button><label class="f inline">Load a course map file<input type="file" id="map-file" accept=".json,.txt,application/json,text/plain" data-ch="mapFile"></label><span class="sub" id="mapFileMsg"></span></div>
     <p class="sub">The map file holds the tee and green pins of every hole you have mapped. Send it to a friend and they load it here.</p></section>`;
@@ -1299,7 +1401,8 @@ function mapGuide() {
     <li><b>Pick an aim.</b> Tap Aim to draw your shot pattern for the club. Drag the cross until the rings sit clear of trouble. Inside reach of the green, the app starts you on the spot with the lowest expected score.</li>
     <li><b>Mark each shot.</b> Walk to the ball and tap Mark ball here. The distance left fills in by itself. Pick the club and the lie, then Save shot. On the green, type the feet.</li>
     <li><b>Entering a round afterwards?</b> Tap the photo where each shot finished instead.</li></ol>
-    <p class="sub">GPS on a phone is good to about 5 yards in the open and worse under trees. Putts are too short for it, which is why the green asks for feet.</p></section>`;
+    <p class="sub">GPS on a phone is good to about 5 yards in the open and worse under trees. Putts are too short for it, which is why the green asks for feet.</p>
+    <p class="sub">Battery running low? Set GPS updates to Battery saver, at the bottom of the hole screen or in Setup: the GPS then wakes only when you tap Mark ball here, Me or the GPS button on the photo.</p></section>`;
 }
 /* ---------- files in and out: the share sheet on an iPhone, a download elsewhere ---------- */
 async function saveFile(name, text, type) {
@@ -1313,6 +1416,54 @@ async function saveFile(name, text, type) {
   a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 8000);
   return 'saved';
+}
+/* ---------- backup reminders: the rounds live only on this device until a backup file is saved somewhere else ---------- */
+const BK_AT = 'strokeLedger.backupAt';
+const backupAt = () => { try { return +localStorage.getItem(BK_AT) || 0; } catch (e) { return 0; } };
+const markBackedUp = () => { try { localStorage.setItem(BK_AT, String(Date.now())); } catch (e) { /* ignore */ } };
+const localOnly = () => S.sync.state === 'local' && !(window.claude && typeof window.claude.use === 'function');
+/** What has changed on this device since the last backup file: rounds with play in them, and course changes once a backup exists. */
+function unsaved() {
+  const t = backupAt(), rs = Object.values(S.rounds).filter(r => !r.example && hasPlay(r) && (r.updatedAt || 0) > t);
+  const cs = t > 0 && (S.courses.updatedAt || 0) > t;
+  return { t, rs, cs, any: rs.length > 0 || cs };
+}
+const ymd = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+function agoText(t) { const n = Math.floor((Date.now() - t) / 864e5); return n <= 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`; }
+function backupNag() {
+  if (practice || !localOnly()) return '';
+  if (S.ui.bkOk) return `<p class="note okn" role="status">${esc(S.ui.bkOk)}</p>`;
+  const u = unsaved(); if (!u.any || S.ui.bkLater) return '';
+  const what = u.t ? `Last backup file: ${agoText(u.t)}. Since then ${u.rs.length ? `${u.rs.length} round${u.rs.length > 1 ? 's have' : ' has'} changed${u.cs ? ' and so have your courses' : ''}` : 'your courses have changed'}.`
+    : 'No backup file has been saved from this device yet, so your rounds exist only here.';
+  return `<div class="note maphint bknag" id="bkNag"><span><b>Save a backup.</b> ${what}</span><span class="btnrow"><button type="button" class="btn sm" data-act="nagBackup">Save a backup file</button><button type="button" class="btn ghost sm" data-act="nagLater">Not now</button></span><span class="sub" id="nagMsg"></span></div>`;
+}
+/** Save the backup file. On an iPhone this opens the share sheet: Save to Files or AirDrop puts the copy somewhere safe. */
+async function doBackup(msg) {
+  if (practice) { msg.textContent = 'Leave practice mode first, so the backup holds your real data.'; return ''; }
+  try {
+    const r = await saveFile(`Stroke Ledger backup ${today()}.json`, backupText(), 'application/json');
+    if (r === 'saved' || r === 'shared') { markBackedUp(); askPersist(); }
+    msg.textContent = r === 'saved' ? 'Backup file saved. Look in your Downloads folder.' : r === 'shared' ? 'Backup saved.' : '';
+    return r;
+  } catch (e) { msg.textContent = "Couldn't save a file here. Use Copy my data in Setup instead."; return ''; }
+}
+/** Ask the browser to keep this site's data even when the device runs short of space. Browsers decide by their own rules. */
+let persistState = '';
+async function askPersist() {
+  try {
+    const st = navigator.storage; if (!st || !st.persist) { persistState = 'na'; return persistState; }
+    persistState = ((await st.persisted()) || (await st.persist())) ? 'yes' : 'no';
+  } catch (e) { persistState = 'na'; }
+  return persistState;
+}
+try { if (navigator.storage && navigator.storage.persisted) navigator.storage.persisted().then(v => { persistState = v ? 'yes' : 'no'; if (!v && STANDALONE) askPersist(); }, () => {}); } catch (e) { /* not offered */ }
+function backupFacts() {
+  if (!localOnly()) return '';
+  const t = backupAt();
+  const st = persistState === 'yes' ? "This device has agreed to keep the app's data, so it will not clear it to make room. Deleting the app from the Home Screen still deletes it."
+    : persistState === 'no' ? "This device may clear the app's data if it runs short of space. A backup file is the only copy that survives that." : '';
+  return `<p class="sub" id="bkFacts">${t ? `Last backup file from this device: ${dateLabel(ymd(t))} (${agoText(t)}).` : 'No backup file saved from this device yet.'} ${st}</p>`;
 }
 const mapText = () => JSON.stringify({ app:'stroke-ledger-map', v:1, courses: S.courses.list.filter(c => c.holes.some(x => x.geo && (x.geo.t || (x.geo.g || []).length))).map(c => ({ id:c.id, name:c.name, loc:c.loc || null, holes:c.holes.map(x => x.geo ? { t:x.geo.t || null, g:x.geo.g || [] } : null) })) });
 function loadMapText(txt) {
@@ -1346,10 +1497,10 @@ const curHole = () => { const r = curRound(); return r && r.holes[S.ui.hole]; };
 const finishRef = i => { const h = curHole(); return h ? (h.shots[i + 1] || (!h.done && h.next) || null) : null; };
 const backupText = () => JSON.stringify({ app:'stroke-ledger', v:1, settings:S.settings, courses:S.courses, rounds:S.rounds });
 const curCourse = () => courseById(S.ui.courseId) || S.courses.list[0];
-function go(v) { if (!VIEWS.includes(v)) v = 'rounds'; S.ui.view = v; S.ui.confirm = null; try { if (location.hash.slice(1) !== v) location.hash = v; } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); }
+function go(v) { if (!VIEWS.includes(v)) v = 'rounds'; S.ui.view = v; S.ui.confirm = null; S.ui.bkOk = ''; try { if (location.hash.slice(1) !== v) location.hash = v; } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); }
 const ACT = {
   go: el => go(el.dataset.view),
-  openRound: el => { S.ui.roundId = el.dataset.id; const r = curRound(); const i = r.holes.findIndex(h => !h.done); S.ui.hole = i < 0 ? 0 : i; S.ui.pad = null; S.ui.editShot = null; render(); window.scrollTo(0, 0); },
+  openRound: el => { S.ui.bkOk = ''; S.ui.roundId = el.dataset.id; const r = curRound(); const i = r.holes.findIndex(h => !h.done); S.ui.hole = i < 0 ? 0 : i; S.ui.pad = null; S.ui.editShot = null; render(); window.scrollTo(0, 0); },
   closeRound: () => { S.ui.roundId = null; S.ui.confirm = null; render(); window.scrollTo(0, 0); },
   hole: el => { const r = curRound(), i = +el.dataset.i; if (!r || i < 0 || i >= r.holes.length) return; S.ui.hole = i; S.ui.pad = null; S.ui.editShot = null; render(); },
   padLie: el => {
@@ -1357,19 +1508,40 @@ const ACT = {
     if (p.g && (was === 'grn') !== (p.lie === 'grn')) { const h = curHole(), geo = geoOf(holeDef(h)); p.d = p.lie === 'grn' || !geo ? '' : String(Math.max(1, Math.round(SLMap.dist(p.g, pinOf(h, geo))))); }
     render();
   },
-  padClub: el => { const p = S.ui.pad; if (!p) return; p.c = p.c === el.dataset.v ? '' : el.dataset.v; render(); },
+  padClub: el => {                        // tapping the suggested club confirms it; tapping a club you picked yourself clears it
+    const p = S.ui.pad; if (!p) return; const v = el.dataset.v;
+    if (!(p.cAuto && p.c === v)) p.c = p.c === v ? '' : v;
+    p.cAuto = false; render();
+  },
+  putts: el => {                          // finish the hole with 2 or 3 putts from here; a putt without a typed length is kept with no length
+    const h = curHole(), p = S.ui.pad, k = +el.dataset.v; if (!h || !p || !(k >= 2) || h.done) return;
+    if (startPos(h).lie !== 'grn') return;
+    const put = p.c || putterId(), leave = p.lie === 'grn' ? pf(p.d) : NaN;
+    const s = mkShot(h, p); s.c = put; h.shots.push(s);
+    for (let i = 1; i < k; i++) h.shots.push(i === 1 && leave > 0 ? Object.assign({ lie:'grn', d:leave, c:put }, p.g ? { g:p.g } : {}) : { lie:'grn', d:null, c:put, u:1 });
+    h.done = true; delete h.next; S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render();
+  },
   padMiss: el => { const p = S.ui.pad; if (!p) return; p.m = toggleMiss(p.m, el.dataset.v); render(); },
   padPen: el => { const p = S.ui.pad; if (!p) return; p.p = +el.dataset.v; render(); },
   holed: () => { const h = curHole(), p = S.ui.pad; if (!h || !p) return; h.shots.push(mkShot(h, p)); h.done = true; delete h.next; S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render(); },
-  reopen: () => { const h = curHole(); if (!h || !h.shots.length) return; const s = h.shots.pop(); h.next = backTo(s); h.done = false; S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render(); },
+  reopen: () => { const h = curHole(); if (!h || !h.shots.length) return; const s = popShot(h); h.next = backTo(s); h.done = false; S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render(); },
   rehit: () => { const h = curHole(), p = S.ui.pad; if (!h || !p) return; const s = mkShot(h, p); s.p = Math.max(1, s.p || 0); h.shots.push(s); h.next = backTo(s); S.ui.pad = null; touchRound(S.ui.roundId); render(); },
-  undoShot: () => { const h = curHole(); if (!h || !h.shots.length) return; const s = h.shots.pop(); h.next = backTo(s); S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render(); },
+  undoShot: () => { const h = curHole(); if (!h || !h.shots.length) return; const s = popShot(h); h.next = backTo(s); S.ui.pad = null; S.ui.editShot = null; touchRound(S.ui.roundId); render(); },
   editShot: el => { const i = +el.dataset.i; S.ui.editShot = S.ui.editShot === i ? null : i; render(); },
   edLie: el => { const t = finishRef(+el.dataset.i); if (!t) return; t.lie = el.dataset.v; touchRound(S.ui.roundId); render(); },
   edClub: el => { const s = curHole().shots[+el.dataset.i]; s.c = s.c === el.dataset.v ? '' : el.dataset.v; touchRound(S.ui.roundId); render(); },
   edMiss: el => { const s = curHole().shots[+el.dataset.i]; s.m = toggleMiss(s.m, el.dataset.v); touchRound(S.ui.roundId); render(); },
   edPen: el => { const s = curHole().shots[+el.dataset.i]; s.p = +el.dataset.v; touchRound(S.ui.roundId); render(); },
-  delShot: el => { const h = curHole(), i = +el.dataset.i, s = h.shots[i]; if (!s) return; if (i === h.shots.length - 1) { h.next = backTo(s); h.done = false; } h.shots.splice(i, 1); S.ui.editShot = null; S.ui.pad = null; touchRound(S.ui.roundId); render(); },
+  delShot: el => {
+    const h = curHole(), i = +el.dataset.i, s = h.shots[i]; if (!s) return;
+    if (s.u) h.shots.splice(i, 1);                     // one putt fewer; the hole stays holed
+    else {
+      const k = 1 + unloggedAfter(h, i);                // putts with no length go with the putt they followed
+      if (i + k === h.shots.length) { h.next = backTo(s); h.done = false; }
+      h.shots.splice(i, k);
+    }
+    S.ui.editShot = null; S.ui.pad = null; touchRound(S.ui.roundId); render();
+  },
   ask: el => { S.ui.confirm = el.dataset.v; render(); },
   cancel: () => { S.ui.confirm = null; render(); },
   delRound: () => { const id = S.ui.roundId; S.ui.roundId = null; S.ui.confirm = null; removeRound(id); render(); },
@@ -1396,11 +1568,15 @@ const ACT = {
   abDel: el => { const rows = S.ui.lab.ab[el.dataset.s], n = rows.length; if (n <= 1) return; if (rows[n - 1].l === 'holed') rows.splice(n - 2, 1); else rows.pop(); render(); },
   abHole: el => { S.ui.lab.ab[el.dataset.s].push({ l:'holed', d:0, p:0 }); render(); },
   saveBackupFile: async () => {
-    const msg = $('#backupMsg');
-    if (practice) { msg.textContent = 'Leave practice mode first, so the backup holds your real data.'; return; }
-    try { const r = await saveFile(`Stroke Ledger backup ${today()}.json`, backupText(), 'application/json'); msg.textContent = r === 'saved' ? 'Backup file saved. Look in your Downloads folder.' : r === 'shared' ? 'Backup saved.' : ''; }
-    catch (e) { msg.textContent = "Couldn't save a file here. Use Copy my data instead."; }
+    const msg = $('#backupMsg'), r = await doBackup(msg);
+    if (r === 'saved' || r === 'shared') { const f = $('#bkFacts'); if (f) f.outerHTML = backupFacts(); }
   },
+  nagBackup: async () => {
+    const msg = $('#nagMsg'), r = await doBackup(msg);
+    if (r === 'saved' || r === 'shared') { S.ui.bkOk = msg.textContent || 'Backup saved.'; render(); }
+  },
+  nagLater: () => { S.ui.bkLater = true; render(); },
+  finishRound: () => { S.ui.roundId = null; S.ui.confirm = null; S.ui.bkLater = false; S.ui.bkOk = ''; render(); window.scrollTo(0, 0); },
   saveTemplate: () => {
     const msg = $('#tplMsg');
     try {
@@ -1446,7 +1622,7 @@ const ACT = {
       const j = JSON.parse(S.ui.backup); if (!j || j.app !== 'stroke-ledger') throw new Error('x');
       Object.keys(S.rounds).forEach(id => { if (!(j.rounds || {})[id]) removeRound(id); });
       S.settings = normSettings(j.settings); S.courses = normCourses(j.courses); S.rounds = j.rounds || {}; Object.values(S.rounds).forEach(normRound); mergeGeo();
-      S.ui.confirm = null; S.ui.backup = ''; touchSettings(); touchCourses(); Object.keys(S.rounds).forEach(touchRound); render(); msg().textContent = 'Restored.';
+      S.ui.confirm = null; S.ui.backup = ''; touchSettings(); touchCourses(); Object.keys(S.rounds).forEach(touchRound); if (!practice) markBackedUp(); render(); msg().textContent = 'Restored.';
     } catch (e) { S.ui.confirm = null; render(); msg().textContent = 'That text is not a Stroke Ledger backup.'; }
   }
 };
@@ -1489,7 +1665,8 @@ const CH = {
     render();
   },
   nr: el => { S.ui.nr[el.dataset.k] = el.value; render(); },
-  edD: el => { const v = pf(el.value), t = finishRef(+el.dataset.i); if (t && v > 0) { t.d = v; touchRound(S.ui.roundId); } render(); },
+  padD0: () => { const h = curHole(), p = S.ui.pad; if (h && p && h.par === 3 && p.cAuto) { resuggest(h, p); render(); } },
+  edD: el => { const v = pf(el.value), t = finishRef(+el.dataset.i); if (t && v > 0) { t.d = v; delete t.u; touchRound(S.ui.roundId); } render(); },
   edD0: el => { const v = pf(el.value), s = curHole().shots[0]; if (s && v > 0) { s.d = v; touchRound(S.ui.roundId); } render(); },
   roundNotes: el => { const r = curRound(); if (r) { r.notes = el.value; touchRound(r.id); } },
   statCourse: el => { S.ui.statCourse = el.value; render(); },
@@ -1523,6 +1700,7 @@ const SUB = {
       c.holes.forEach((x, i) => r.holes.push({ cid, n:i + 1, par:+x.par || 4, yards:+tee.yards[i] || 0, shots:[], done:false }));
     });
     S.rounds[r.id] = r; S.ui.roundId = r.id; S.ui.hole = 0; S.ui.pad = null; S.ui.editShot = null; touchRound(r.id); render(); window.scrollTo(0, 0);
+    if (persistState !== 'yes' && !practice) askPersist();
   },
   addShot: () => {
     const h = curHole(), p = S.ui.pad; if (!h || !p) return;
@@ -1538,9 +1716,27 @@ const SUB = {
   }
 };
 Object.assign(ACT, {
-  gpsOn: () => { SLMap.gpsSet(true); liveMap(); if (SLMap.gps.err) say(SLMap.gps.err); },
+  gpsOn: () => { SLMap.gpsSet(true); if (SLMap.gps.mode === 'tap') { ACT.gpsFix(); return; } liveMap(); if (SLMap.gps.err) say(SLMap.gps.err); },
   gpsSet: el => { SLMap.gpsSet(el.dataset.v === '1'); render(); },
-  mapView: el => { if (el.dataset.v === 'me' && !SLMap.gps.want) { SLMap.gpsSet(true); liveMap(); say('Allow location when the phone asks, then tap Me again.'); return; } SLMap.view(el.dataset.v); },
+  gpsMode: el => { SLMap.gpsMode(el.dataset.v); render(); },
+  /** Battery saver: take one position now. The distances show from where you stand for a minute, then go back to the ball. */
+  gpsFix: async () => {
+    if (!SLMap.gps.want) SLMap.gpsSet(true);
+    const bar = $('#gpsBar'); if (bar) bar.innerHTML = '<span>GPS<b>…</b></span>';
+    const fx = await SLMap.locate(8000); liveMap();
+    if (!fx) say(SLMap.gps.err || 'No GPS position yet. Step into the open and try again.');
+    clearTimeout(timers.fix); timers.fix = setTimeout(liveMap, 61000);
+  },
+  mapView: async el => {
+    const v = el.dataset.v, g = SLMap.gps;
+    if (v === 'me' && g.mode === 'tap') {
+      if (!g.want) SLMap.gpsSet(true);
+      if (!SLMap.fresh()) { say('Getting your position…'); await SLMap.locate(8000); liveMap(); clearTimeout(timers.fix); timers.fix = setTimeout(liveMap, 61000); }
+      SLMap.view('me'); return;
+    }
+    if (v === 'me' && !g.want) { SLMap.gpsSet(true); liveMap(); say('Allow location when the phone asks, then tap Me again.'); return; }
+    SLMap.view(v);
+  },
   markBall: async () => {
     const h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo || h.done) return;
     if (!SLMap.gps.want) { SLMap.gpsSet(true); liveMap(); }
@@ -1568,7 +1764,7 @@ Object.assign(ACT, {
     const r = curRound(), h = curHole(), geo = h && geoOf(holeDef(h)); if (!geo || !h.tg) return;
     delete h.tg;
     const a = S.ui.aim; if (a && a.on && a.src === 'spot' && !h.shots.length) { a.from = teeOf(h, geo); a.pt = null; }
-    if (!h.shots.length && h.par === 3) padFor(r, S.ui.hole).d0 = String(startPos(h).d || '');
+    if (!h.shots.length && h.par === 3) { const p = padFor(r, S.ui.hole); p.d0 = String(startPos(h).d || ''); resuggest(h, p); }
     touchRound(S.ui.roundId); render();
   },
   aimToggle: () => {
@@ -1611,7 +1807,15 @@ Object.assign(ACT, {
     try { const r = await saveFile(`Stroke Ledger course map ${today()}.json`, mapText(), 'application/json'); if (msg) msg.textContent = r === 'saved' ? 'Map file saved. Look in your Downloads folder.' : r === 'shared' ? 'Done.' : ''; }
     catch (e) { if (msg) msg.textContent = "Couldn't save a file here."; }
   },
-  hintOff: () => { try { localStorage.setItem('strokeLedger.hint', '1'); } catch (e) { /* ignore */ } render(); }
+  hintOff: () => { try { localStorage.setItem('strokeLedger.hint', '1'); } catch (e) { /* ignore */ } render(); },
+  useGps: el => {
+    const m = measuredClubs()[el.dataset.c], k = club(el.dataset.c); if (!m || !k || m.nFull < GPS_MIN.d) return;
+    const ratio = +k.total > 0 && +k.carry > 0 ? +k.carry / +k.total : 0.94;
+    k.total = Math.round(m.typ); k.carry = Math.round(m.typ * ratio);
+    if (m.nLat >= GPS_MIN.pat) k.lat = Math.max(2, Math.round(m.lat));
+    if (m.nDep >= GPS_MIN.pat) k.depth = Math.max(2, Math.round(m.dep));
+    S.settings.bagEstimated = false; touchSettings(); render();
+  }
 });
 Object.assign(CH, {
   aimClub: el => { if (S.ui.aim) { S.ui.aim.club = el.value; S.ui.aim.pt = null; render(); } },

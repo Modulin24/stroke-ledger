@@ -85,12 +85,14 @@ const SLMap = (() => {
 
   /* ---------- GPS ---------- */
   const GK = 'strokeLedger.gps';
-  const gps = { want: false, fix: null, err: '', id: null };
+  const MK = 'strokeLedger.gpsMode';
+  // mode 'live': the GPS follows you while a map is on screen. 'tap' (battery saver): a position is taken only when asked for.
+  const gps = { want: false, fix: null, err: '', id: null, mode: 'live' };
   const subs = new Set();
   const tell = () => { drawMe(); subs.forEach(f => { try { f(gps); } catch (e) { /* a listener failed: keep going */ } }); };
-  try { gps.want = localStorage.getItem(GK) === '1'; } catch (e) { /* no storage */ }
+  try { gps.want = localStorage.getItem(GK) === '1'; gps.mode = localStorage.getItem(MK) === 'tap' ? 'tap' : 'live'; } catch (e) { /* no storage */ }
   function gpsRun() {
-    if (gps.id != null || !gps.want) return;
+    if (gps.id != null || !gps.want || gps.mode === 'tap') return;
     if (!navigator.geolocation) { gps.err = 'This browser has no GPS.'; tell(); return; }
     gps.err = '';
     gps.id = navigator.geolocation.watchPosition(p => {
@@ -103,9 +105,10 @@ const SLMap = (() => {
   }
   function gpsPause() { if (gps.id != null && navigator.geolocation) navigator.geolocation.clearWatch(gps.id); gps.id = null; }
   function gpsSet(on) { gps.want = !!on; try { localStorage.setItem(GK, on ? '1' : '0'); } catch (e) { /* ignore */ } if (on) gpsRun(); else { gpsPause(); gps.fix = null; gps.err = ''; } tell(); }
+  function gpsMode(m) { gps.mode = m === 'tap' ? 'tap' : 'live'; try { localStorage.setItem(MK, gps.mode); } catch (e) { /* ignore */ } if (gps.mode === 'tap') gpsPause(); else if (model) gpsRun(); tell(); }
   const fresh = () => gps.fix && Date.now() - gps.fix.t < 60000 ? gps.fix : null;
   // Coming back to the app (phone unlocked at the next shot): restart the GPS so the first fix is a new one.
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && gps.want && model) { gpsPause(); gpsRun(); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && gps.want && gps.mode !== 'tap' && model) { gpsPause(); gpsRun(); } });
   /** A position taken now, for marking a spot. Resolves with null when the phone cannot give one in time. */
   function locate(ms) {
     return new Promise(res => {
@@ -337,6 +340,6 @@ const SLMap = (() => {
   function hide() { model = null; if (host && host.parentNode) { host.parentNode.removeChild(host); [msgEl, attrEl].forEach(x => x.parentNode && x.parentNode.removeChild(x)); } gpsPause(); }
 
   return { YD, r6, ok, okPoly, dist, bearing, dest, centroid, inPoly, ringSort, fcb, ellipse, circle, bestAim, toXY, toLL,
-    gps, fresh, locate, gpsSet, onGps: f => { subs.add(f); return () => subs.delete(f); }, show, hide, view, photo, hasKey: () => !!String(CFG().esriKey || '').trim(), lib: () => !!window.maplibregl,
+    gps, fresh, locate, gpsSet, gpsMode, onGps: f => { subs.add(f); return () => subs.delete(f); }, show, hide, view, photo, hasKey: () => !!String(CFG().esriKey || '').trim(), lib: () => !!window.maplibregl,
     mapCenter: () => lastCenter, redraw: sync, _map: () => map, _ready: () => ready };
 })();
